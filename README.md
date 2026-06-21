@@ -33,7 +33,7 @@ uses by hand — so the chatbot and the website never drift apart (both read fro
 
 - **Next.js 15** (App Router) + **React 19** + **TypeScript**
 - **Tailwind CSS v4** for styling
-- **Google Gemini** (`gemini-2.0-flash`, free tier) via the REST API for the assistant (SSE streaming)
+- **Google Gemini** (`gemini-2.5-flash`) via the REST API for the assistant (SSE streaming)
 - **pdf-lib** for filling the official IRS PDF
 - **Zod** for request validation
 
@@ -111,8 +111,9 @@ an LLM an expert on a narrow domain):
 - When the client has filled out the intake and clicked **"Save for the AI assistant,"** the chat sends a
   compact, **PII‑light** summary of their intake (full SSN omitted) so the assistant can answer with their
   actual day counts, exempt‑year count, and recommended line 4b — and show the arithmetic.
-- The endpoint streams responses from **Gemini** (`gemini-2.0-flash` by default; set `GEMINI_MODEL` to
-  `gemini-2.5-flash`/`gemini-2.5-pro` for more capability) at a low temperature for accurate, calculated answers.
+- The endpoint streams responses from **Gemini** (`gemini-2.5-flash` by default; set `GEMINI_MODEL` to
+  `gemini-2.5-pro` for more capability or `gemini-2.5-flash-lite` for the cheapest) at a low temperature
+  for accurate, calculated answers.
 
 ## How the form is filled
 

@@ -10,7 +10,7 @@
  * this module only handles transport.
  */
 
-export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash";
+export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 export function hasGeminiKey(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
