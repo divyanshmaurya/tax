@@ -12,6 +12,16 @@
 
 export const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
+/**
+ * Models tried in order: the configured model first, then current fallbacks.
+ * If the configured model is ever retired (404), the assistant transparently
+ * falls back to a working one instead of breaking.
+ */
+function modelCandidates(): string[] {
+  const fallbacks = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-flash-latest"];
+  return [...new Set([GEMINI_MODEL, ...fallbacks])];
+}
+
 export function hasGeminiKey(): boolean {
   return Boolean(process.env.GEMINI_API_KEY);
 }
@@ -55,9 +65,6 @@ export async function* streamGemini(
   const key = process.env.GEMINI_API_KEY;
   if (!key) throw new Error("GEMINI_API_KEY is not configured.");
 
-  const url =
-    `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:streamGenerateContent?alt=sse`;
-
   // Gemini uses role "model" for the assistant and has no "system" role in
   // contents — the system prompt goes in systemInstruction.
   const contents = messages.map((m) => ({
@@ -71,16 +78,33 @@ export async function* streamGemini(
     generationConfig: { temperature: 0.3, maxOutputTokens: 4096 },
   });
 
-  const res = await postWithRetry(url, payload, key);
+  // Try the configured model first, then fall back to known-good models if it
+  // 404s (e.g. the model was retired). Only 404 triggers fallback; quota (429)
+  // and other errors are surfaced as-is.
+  const candidates = modelCandidates();
+  let res!: Response;
+  for (let i = 0; i < candidates.length; i++) {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${candidates[i]}:streamGenerateContent?alt=sse`;
+    res = await postWithRetry(url, payload, key);
+    if (res.status === 404 && i < candidates.length - 1) {
+      await res.text().catch(() => {}); // drain body before trying the next model
+      continue;
+    }
+    break;
+  }
 
   if (!res.ok || !res.body) {
     const detail = await res.text().catch(() => "");
     if (res.status === 429) {
       throw new Error(
-        "Gemini free-tier limit reached (429). Per-minute limits clear in about a minute; " +
-          "the daily limit resets next day (Pacific time). Check usage at https://ai.dev/rate-limit, " +
-          "or enable billing on your Google Cloud project for much higher limits (this app's usage is " +
-          "fractions of a cent per chat).",
+        "Gemini limit reached (429). Per-minute limits clear in about a minute and the daily limit " +
+          "resets next day (Pacific time). Check usage at https://ai.dev/rate-limit, or raise limits with billing.",
+      );
+    }
+    if (res.status === 404) {
+      throw new Error(
+        `No usable Gemini model — tried ${candidates.join(", ")}. Set GEMINI_MODEL to a current model ` +
+          `(see https://ai.google.dev/gemini-api/docs/models). ${detail.slice(0, 200)}`,
       );
     }
     throw new Error(`Gemini API error ${res.status}. ${detail.slice(0, 300)}`);
