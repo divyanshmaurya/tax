@@ -85,6 +85,18 @@ npm run lint     # ESLint
 > Only the `/assistant` chatbot needs `ANTHROPIC_API_KEY`; without it, the chat returns a clear
 > "not configured" message instead of failing.
 
+## Deploy to Vercel
+
+1. On [vercel.com](https://vercel.com): **Add New → Project** and import this repo.
+2. Next.js is auto-detected (build `next build`, no extra settings).
+3. Add the environment variable **`ANTHROPIC_API_KEY`** (Project → Settings → Environment Variables).
+4. **Deploy.** Every push to a branch/PR gets a preview URL; `main` becomes production.
+
+The server routes (`/api/chat` streaming, `/api/form8843`) run as Node serverless functions.
+`next.config.ts` sets `outputFileTracingIncludes` so the blank IRS form under `public/forms/` is bundled
+into the PDF route's function — without it, serverless file tracing can omit `public/` assets and the
+PDF route would 500 in production.
+
 ---
 
 ## How the chatbot is "built/trained"
