@@ -29,13 +29,13 @@ const BLANK_FORM_PATH = path.join(process.cwd(), "public", "forms", "f8843-2025.
  * verified by rendering the filled form. See README "How the form is filled".
  */
 const P1 = {
-  firstName: [40, 675],
-  lastName: [248, 675],
-  taxpayerId: [442, 675],
+  firstName: [40, 678],
+  lastName: [248, 678],
+  taxpayerId: [442, 678],
   addrResidence: [120, 640],
   addrUS: [402, 640],
   line1a: [420, 589],
-  line1b: [508, 571],
+  line1b: [70, 566], // on the full-width dotted answer line below the 1b prompt
   line2: [342, 553],
   line3a: [270, 540],
   line3b: [194, 529],
@@ -43,9 +43,12 @@ const P1 = {
   days2024: [180, 505],
   days2023: [265, 505],
   line4b: [498, 493],
-  // Part III — Students
-  line9: [150, 278],
-  line10: [150, 232],
+  // Part III — Students. Each answer has two dotted lines (name on the upper,
+  // address + phone on the lower).
+  line9Name: [70, 278],
+  line9Detail: [70, 266],
+  line10Name: [70, 230],
+  line10Detail: [70, 218],
   // line 11 visa history grid (two rows)
   v2019: [348, 205],
   v2020: [442, 205],
@@ -54,10 +57,10 @@ const P1 = {
   v2023: [262, 193],
   v2024: [348, 193],
   // Yes/No checkboxes (X mark): [yesX, noX]
-  line12Yes: [510, 169],
-  line12No: [546, 169],
-  line13Yes: [510, 109],
-  line13No: [546, 109],
+  line12Yes: [512, 170],
+  line12No: [548, 170],
+  line13Yes: [512, 110],
+  line13No: [548, 110],
   line14: [150, 84],
 } as const;
 
@@ -95,8 +98,24 @@ function wrap(text: string, max: number): string[] {
   return out;
 }
 
-function institutionText(i: { name: string; address: string; phone: string }): string {
-  return [i.name, i.address, i.phone].filter(Boolean).join("\n");
+/** Address + phone on one line, for the second dotted line of Part III items. */
+function instDetail(i: { address: string; phone: string }): string {
+  return [i.address, i.phone].filter(Boolean).join("   ·   ");
+}
+
+/** Draw a single line, shrinking the font if needed so it fits maxWidth. */
+function drawFit(
+  page: PDFPage,
+  font: PDFFont,
+  text: string,
+  xy: readonly [number, number] | number[],
+  maxWidth: number,
+  size = 9,
+) {
+  if (!text) return;
+  let s = size;
+  while (s > 6 && font.widthOfTextAtSize(text, s) > maxWidth) s -= 0.5;
+  page.drawText(text, { x: xy[0], y: xy[1], size: s, font, color: rgb(0.06, 0.09, 0.16) });
 }
 
 /**
@@ -126,7 +145,7 @@ export async function generateForm8843(input: Form8843Input, signed = false): Pr
   const line1b = input.statusChange
     ? `${input.currentStatusEndOfYear} (changed ${formatDate(input.statusChange.dateOfChange)}; prev ${input.statusChange.previousStatus})`
     : input.currentStatusEndOfYear || input.currentVisaType;
-  draw(page1, font, line1b, P1.line1b);
+  drawFit(page1, font, line1b, P1.line1b, 500, 9);
   draw(page1, font, input.personal.countryOfCitizenship, P1.line2);
   draw(page1, font, input.personal.passportCountry, P1.line3a);
   draw(page1, font, input.personal.passportNumber, P1.line3b);
@@ -139,8 +158,10 @@ export async function generateForm8843(input: Form8843Input, signed = false): Pr
 
   // Part III — Students (the common case for F-1)
   if (input.filingCategory === "student") {
-    drawBlock(page1, font, institutionText(input.institution), P1.line9[0], P1.line9[1], 8, 9);
-    drawBlock(page1, font, institutionText(input.director), P1.line10[0], P1.line10[1], 8, 9);
+    drawFit(page1, font, input.institution.name, P1.line9Name, 500, 9);
+    drawFit(page1, font, instDetail(input.institution), P1.line9Detail, 500, 8);
+    drawFit(page1, font, input.director.name, P1.line10Name, 500, 9);
+    drawFit(page1, font, instDetail(input.director), P1.line10Detail, 500, 8);
     const vh = input.visaHistory;
     const vt = (y: number) => (vh[y] && vh[y] !== "None" ? vh[y] : "N/A");
     draw(page1, font, vt(2019), P1.v2019);
