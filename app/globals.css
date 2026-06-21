@@ -1,0 +1,67 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0b1220;
+  --color-muted: #56617a;
+  --color-line: #e4e8f0;
+  --color-surface: #ffffff;
+  --color-canvas: #f7f8fb;
+  --color-brand: #4f46e5;
+  --color-brand-dark: #3f37c9;
+  --color-brand-soft: #eef0fe;
+  --color-accent: #0d9488;
+  --color-accent-soft: #e6f5f2;
+  --color-warn: #b45309;
+  --color-warn-soft: #fdf2e3;
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer components {
+  .container-page {
+    @apply mx-auto w-full max-w-6xl px-5;
+  }
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60;
+  }
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 bg-[var(--color-brand)] text-white hover:bg-[var(--color-brand-dark)];
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-60 border border-[var(--color-line)] bg-white text-[var(--color-ink)] hover:bg-[var(--color-canvas)];
+  }
+  .card {
+    @apply rounded-2xl border border-[var(--color-line)] bg-[var(--color-surface)] shadow-sm;
+  }
+  .label {
+    @apply mb-1 block text-sm font-medium text-[var(--color-ink)];
+  }
+  .input {
+    @apply w-full rounded-lg border border-[var(--color-line)] bg-white px-3 py-2 text-sm text-[var(--color-ink)] outline-none focus:border-[var(--color-brand)] focus:ring-2 focus:ring-[var(--color-brand-soft)];
+  }
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
+  }
+}
+
+/* Markdown rendering inside chat bubbles */
+.prose-chat :where(p):not(:first-child) { margin-top: 0.6rem; }
+.prose-chat :where(ul, ol) { margin: 0.4rem 0 0.4rem 1.1rem; }
+.prose-chat :where(ul) { list-style: disc; }
+.prose-chat :where(ol) { list-style: decimal; }
+.prose-chat :where(li) { margin: 0.15rem 0; }
+.prose-chat :where(h2, h3) { font-weight: 700; margin-top: 0.8rem; }
+.prose-chat :where(code) { background: var(--color-brand-soft); padding: 0.05rem 0.3rem; border-radius: 0.3rem; font-family: var(--font-mono); font-size: 0.85em; }
+.prose-chat :where(strong) { font-weight: 700; }
+.prose-chat :where(a) { color: var(--color-brand); text-decoration: underline; }
