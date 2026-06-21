@@ -33,7 +33,7 @@ uses by hand — so the chatbot and the website never drift apart (both read fro
 
 - **Next.js 15** (App Router) + **React 19** + **TypeScript**
 - **Tailwind CSS v4** for styling
-- **Anthropic Claude** (`claude-opus-4-8`) via `@anthropic-ai/sdk` for the assistant (streaming + adaptive thinking)
+- **Google Gemini** (`gemini-2.0-flash`, free tier) via the REST API for the assistant (SSE streaming)
 - **pdf-lib** for filling the official IRS PDF
 - **Zod** for request validation
 
@@ -55,7 +55,7 @@ lib/
   form8843.ts           Domain model + Substantial Presence Test + validation (framework-agnostic)
   pdf.ts                Fills the official IRS Form 8843 with pdf-lib (server-only)
   systemPrompt.ts       The assistant's grounded system prompt + intake context builder
-  anthropic.ts          Anthropic client factory (reads ANTHROPIC_API_KEY)
+  gemini.ts             Gemini client (REST + SSE streaming; reads GEMINI_API_KEY)
   sample.ts             A fictional sample intake (no real PII)
 data/
   knowledge.ts          Form 8843 knowledge base (shared by the prompt and the Guide page)
@@ -69,7 +69,7 @@ public/forms/
 
 ```bash
 npm install
-cp .env.example .env.local      # then add your ANTHROPIC_API_KEY (for the assistant)
+cp .env.example .env.local      # then add your GEMINI_API_KEY (free — for the assistant)
 npm run dev                      # http://localhost:3000
 ```
 
@@ -82,14 +82,15 @@ npm run lint     # ESLint
 ```
 
 > The intake, calculator, Guide, and **Form 8843 PDF generation all work without an API key.**
-> Only the `/assistant` chatbot needs `ANTHROPIC_API_KEY`; without it, the chat returns a clear
+> Only the `/assistant` chatbot needs `GEMINI_API_KEY`; without it, the chat returns a clear
 > "not configured" message instead of failing.
 
 ## Deploy to Vercel
 
 1. On [vercel.com](https://vercel.com): **Add New → Project** and import this repo.
 2. Next.js is auto-detected (build `next build`, no extra settings).
-3. Add the environment variable **`ANTHROPIC_API_KEY`** (Project → Settings → Environment Variables).
+3. Add the environment variable **`GEMINI_API_KEY`** (Project → Settings → Environment Variables) —
+   get a free key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
 4. **Deploy.** Every push to a branch/PR gets a preview URL; `main` becomes production.
 
 The server routes (`/api/chat` streaming, `/api/form8843`) run as Node serverless functions.
@@ -110,7 +111,8 @@ an LLM an expert on a narrow domain):
 - When the client has filled out the intake and clicked **"Save for the AI assistant,"** the chat sends a
   compact, **PII‑light** summary of their intake (full SSN omitted) so the assistant can answer with their
   actual day counts, exempt‑year count, and recommended line 4b — and show the arithmetic.
-- The endpoint streams responses with **adaptive thinking** on `claude-opus-4-8` for accurate, calculated answers.
+- The endpoint streams responses from **Gemini** (`gemini-2.0-flash` by default; set `GEMINI_MODEL` to
+  `gemini-2.5-flash`/`gemini-2.5-pro` for more capability) at a low temperature for accurate, calculated answers.
 
 ## How the form is filled
 
@@ -135,6 +137,9 @@ pages. If the client's status changed mid‑year, a clean **Visa Status Statemen
 
 - Client data stays in the browser unless the user explicitly generates a PDF or saves it for the assistant.
 - The chat is instructed not to collect full SSNs; the intake form is the place for sensitive details.
+- Note: on Gemini's **free tier**, Google may use prompts to improve its products. The assistant is
+  designed to stay PII-light (no full SSN), but for a production practice consider a paid Gemini tier or
+  Vertex AI, which offer stronger data-use protections.
 - This platform provides **general information and preparation support**, not individualized tax/legal advice.
   Every form is reviewed by the advisor and signed by the client before filing. Not affiliated with the IRS.
 

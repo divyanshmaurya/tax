@@ -1,14 +1,14 @@
 /**
- * POST /api/chat — streaming Form 8843 assistant.
+ * POST /api/chat — streaming Form 8843 assistant (Google Gemini).
  *
  * Body: { messages: {role, content}[], intake?: Form8843Input }
  * Returns: a streamed text/plain response (the assistant's answer), or 503 JSON
- * when ANTHROPIC_API_KEY is not configured so the UI can show setup guidance.
+ * when GEMINI_API_KEY is not configured so the UI can show setup guidance.
  */
 
 import { NextRequest } from "next/server";
 import { z } from "zod";
-import { CHAT_MODEL, getAnthropic } from "@/lib/anthropic";
+import { hasGeminiKey, streamGemini } from "@/lib/gemini";
 import { buildSystemPrompt } from "@/lib/systemPrompt";
 import type { Form8843Input } from "@/lib/form8843";
 
@@ -36,12 +36,11 @@ export async function POST(req: NextRequest) {
     return Response.json({ error: "Invalid request body." }, { status: 400 });
   }
 
-  const client = getAnthropic();
-  if (!client) {
+  if (!hasGeminiKey()) {
     return Response.json(
       {
         error:
-          "The assistant is not configured. Set the ANTHROPIC_API_KEY environment variable " +
+          "The assistant is not configured. Set the GEMINI_API_KEY environment variable " +
           "(see .env.example) and restart the server to enable the chatbot.",
       },
       { status: 503 },
@@ -53,27 +52,21 @@ export async function POST(req: NextRequest) {
   const encoder = new TextEncoder();
   const readable = new ReadableStream<Uint8Array>({
     async start(controller) {
+      let wroteAnything = false;
       try {
-        const stream = client.messages.stream({
-          model: CHAT_MODEL,
-          max_tokens: 8000,
-          thinking: { type: "adaptive" },
-          system,
-          messages: parsed.messages,
-        });
-
-        for await (const event of stream) {
-          if (
-            event.type === "content_block_delta" &&
-            event.delta.type === "text_delta"
-          ) {
-            controller.enqueue(encoder.encode(event.delta.text));
+        for await (const delta of streamGemini(system, parsed.messages)) {
+          if (delta) {
+            wroteAnything = true;
+            controller.enqueue(encoder.encode(delta));
           }
         }
-        await stream.finalMessage();
+        if (!wroteAnything) {
+          controller.enqueue(
+            encoder.encode("_The assistant couldn't generate a response. Please rephrase and try again._"),
+          );
+        }
       } catch (err) {
-        const message =
-          err instanceof Error ? err.message : "The assistant ran into an error.";
+        const message = err instanceof Error ? err.message : "The assistant ran into an error.";
         controller.enqueue(encoder.encode(`\n\n_Error: ${message}_`));
       } finally {
         controller.close();
